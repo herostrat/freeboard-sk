@@ -201,6 +201,18 @@
                 <mat-icon>opacity</mat-icon>
               </button>
             </div>
+            @if(r[1].bounds && r[1].bounds.length === 4) {
+            <div style="width: 100%; text-align: right">
+              <button
+                mat-icon-button
+                (click)="zoomToChartBounds(r)"
+                matTooltip="Zoom to Chart Bounds"
+                matTooltipPosition="above"
+              >
+                <mat-icon>center_focus_strong</mat-icon>
+              </button>
+            </div>
+            }
             @if(r[1].proxy) {
             <div style="width: 100%; text-align: right">
               <button

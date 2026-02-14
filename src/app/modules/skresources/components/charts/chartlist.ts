@@ -247,6 +247,19 @@ export class ChartListComponent extends ResourceListBase {
     this.skres.updateChartOpacityCache(id, opacity);
   }
 
+  protected zoomToChartBounds(chart: FBChart) {
+    const bounds = chart?.[1]?.bounds;
+    if (!Array.isArray(bounds) || bounds.length !== 4) {
+      return;
+    }
+    this.app.requestZoomToBounds([
+      bounds[0],
+      bounds[1],
+      bounds[2],
+      bounds[3]
+    ]);
+  }
+
 
   private opacityToPercent(value?: number) {
     const opacity = typeof value === 'number' ? value : 1;

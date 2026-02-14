@@ -138,6 +138,7 @@ export class AppFacade extends InfoService {
 
   sIsFetching = signal<boolean>(false); // show progress for fetching data from server
   sTrueMagChoice = signal<string>(''); // preferred path True / Magnetic
+  zoomToBounds = signal<[number, number, number, number] | null>(null); // request map to zoom to bounds
 
   // non-persisted UIstate attributes
   uiCtrl = signal<{
@@ -423,6 +424,11 @@ export class AppFacade extends InfoService {
         this.debug('loadSettingsfromServer(): Error fetching loginStatus!');
       }
     );
+  }
+
+  /** Request map to zoom to the supplied bounds (lon/lat extent). */
+  public requestZoomToBounds(bounds: [number, number, number, number]) {
+    this.zoomToBounds.set(bounds);
   }
 
   /** Initialises Material IconRegistry with custom icons */

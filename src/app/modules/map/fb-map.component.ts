@@ -37,7 +37,7 @@ import { FreeboardOpenlayersModule } from 'src/app/modules/map/ol';
 import { CoordsPipe } from 'src/app/lib/pipes';
 
 import { computeDestinationPoint, getGreatCircleBearing } from 'geolib';
-import { toLonLat } from 'ol/proj';
+import { toLonLat, transformExtent } from 'ol/proj';
 import { Style, Stroke, Fill } from 'ol/style';
 import { Collection, Feature } from 'ol';
 import { Feature as GeoJsonFeature } from 'geojson';
@@ -272,6 +272,13 @@ export class FBMapComponent implements OnInit, OnDestroy {
         this.setScaleUnits();
       }
     });
+    effect(() => {
+      const bounds = this.app.zoomToBounds();
+      if (!bounds) {
+        return;
+      }
+      this.applyZoomToBounds(bounds);
+    });
     this.toggleDblClickZoom(); // init olMapinterations
   }
 
@@ -281,6 +288,29 @@ export class FBMapComponent implements OnInit, OnDestroy {
     setTimeout(() => {
       this.setFocus = 'xxx';
     }, 500);
+
+    const pending = this.app.zoomToBounds();
+    if (pending) {
+      this.applyZoomToBounds(pending);
+    }
+  }
+
+  private applyZoomToBounds(bounds: [number, number, number, number]) {
+    if (!this.olMap) {
+      return;
+    }
+    const map = this.olMap.getMap();
+    if (!map) {
+      return;
+    }
+    const view = map.getView();
+    const proj = view.getProjection();
+    const extent = transformExtent(bounds, 'EPSG:4326', proj);
+    view.fit(extent, {
+      padding: [20, 20, 20, 20],
+      duration: 300
+    });
+    this.app.zoomToBounds.set(null);
   }
 
   ngOnInit() {
