@@ -496,6 +496,7 @@ export function defaultConfig(): IAppConfig {
       charts: ['openstreetmap', 'openseamap'],
       chartOrder: ['openstreetmap', 'openseamap'], // chart layer ordering
       chartOpacity: {},
+      chartLayerVisibility: {},
       aisTargets: null,
       aisTargetTypes: [],
       aisFilterByShipType: false,

@@ -95,7 +95,23 @@ export function initPMTilesXYZLayer(
 export function initPMTilesVectorLayer(
   chart: SKChart,
   zIndex: number
-): VectorTileLayer {
+): VectorTileLayer | null {
+  // Determine visible layers
+  // If layers array is empty or undefined, show all layers (no filtering)
+  // If layers array exists, filter by visibility
+  let visibleLayers: string[] | null = null;
+  
+  if (Array.isArray(chart.layers) && chart.layers.length > 0) {
+    visibleLayers = chart.layers.filter(
+      (layerId) => chart.layerVisibility?.[layerId] !== false
+    );
+  }
+
+  // Only skip layer creation if layers are defined but ALL are hidden
+  if (visibleLayers !== null && visibleLayers.length === 0) {
+    return null;
+  }
+
   const tiles = new pmtiles.PMTiles(chart.url);
 
   function loader(tile, url) {
@@ -127,7 +143,9 @@ export function initPMTilesVectorLayer(
 
   return new VectorTileLayer({
     source: new VectorTileSource({
-      format: new MVT(),
+      format: new MVT({
+        layers: visibleLayers
+      }),
       url: 'pmtiles://' + chart.url + '/{z}/{x}/{y}',
       tileLoadFunction: loader
     }),

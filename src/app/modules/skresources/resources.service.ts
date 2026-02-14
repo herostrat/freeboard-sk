@@ -714,6 +714,39 @@ export class SKResourceService {
     this.app.saveConfig();
   }
 
+  public updateChartLayerVisibility(
+    id: string,
+    layerVisibility: { [layerId: string]: boolean }
+  ) {
+    this.chartCacheSignal.update((current: FBCharts) => {
+      return current.map((c: FBChart) => {
+        if (c[0] !== id) {
+          return c;
+        }
+        const updated = new SKChart(c[1] as any);
+        updated.layerVisibility = layerVisibility;
+        return [c[0], updated, c[2]];
+      });
+    });
+    this.persistChartLayerVisibility(id, layerVisibility);
+  }
+
+  private persistChartLayerVisibility(
+    id: string,
+    layerVisibility: { [layerId: string]: boolean }
+  ) {
+    if (!this.app?.config?.selections) {
+      return;
+    }
+    if (
+      typeof this.app.config.selections.chartLayerVisibility === 'undefined'
+    ) {
+      this.app.config.selections.chartLayerVisibility = {};
+    }
+    this.app.config.selections.chartLayerVisibility[id] = layerVisibility;
+    this.app.saveConfig();
+  }
+
   private applyStoredChartOpacity(chartList: FBCharts): FBCharts {
     const opacityMap = this.app?.config?.selections?.chartOpacity;
     if (!opacityMap) {
@@ -726,6 +759,23 @@ export class SKResourceService {
       }
       const updated = new SKChart(c[1] as any);
       updated.defaultOpacity = Math.min(1, Math.max(0, stored));
+      return [c[0], updated, c[2]] as FBChart;
+    });
+  }
+
+  private applyStoredChartLayerVisibility(chartList: FBCharts): FBCharts {
+    const visibilityMap =
+      this.app?.config?.selections?.chartLayerVisibility;
+    if (!visibilityMap) {
+      return chartList;
+    }
+    return chartList.map((c: FBChart): FBChart => {
+      const stored = visibilityMap[c[0]];
+      if (!stored || typeof stored !== 'object') {
+        return c;
+      }
+      const updated = new SKChart(c[1] as any);
+      updated.layerVisibility = stored;
       return [c[0], updated, c[2]] as FBChart;
     });
   }
@@ -789,6 +839,7 @@ export class SKResourceService {
       flist = this.sortByScaleDesc(flist);
       flist = this.arrangeChartLayers(flist);
       flist = this.applyStoredChartOpacity(flist);
+      flist = this.applyStoredChartLayerVisibility(flist);
       // set map zoom extent
       this.setMapZoomRange();
       this.chartCacheSignal.set(flist);

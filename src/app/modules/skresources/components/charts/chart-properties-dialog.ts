@@ -1,6 +1,7 @@
 import { Component, Inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
+  MatDialog,
   MatDialogModule,
   MatDialogRef,
   MAT_DIALOG_DATA
@@ -26,6 +27,11 @@ import {
 import { NodeTreeSelect } from './node-tree-select';
 import { NodeListSelect } from './node-list-select';
 import { ChartProvider } from 'src/app/types';
+import {
+  LayerPropertiesDialog,
+  LayerInfo
+} from './layer-properties-dialog';
+import { SKResourceService } from '../../resources.service';
 
 /********* ChartPropertiesDialog **********
 	data: <SKChart>
@@ -242,7 +248,13 @@ import { ChartProvider } from 'src/app/types';
             <div style="display:flex;">
               <div class="key-label">Layers:</div>
               <div style="flex: 1 1 auto;">
-                {{ data.layers }}
+                <button
+                  mat-button
+                  (click)="openLayerProperties()"
+                >
+                  <mat-icon>layers</mat-icon>
+                  {{ data.layers.length }} {{ data.layers.length === 1 ? 'Layer' : 'Layers' }}
+                </button>
               </div>
             </div>
           }
@@ -320,6 +332,8 @@ export class ChartPropertiesDialog {
 
   constructor(
     public app: AppFacade,
+    private dialog: MatDialog,
+    private skres: SKResourceService,
     public dialogRef: MatDialogRef<ChartPropertiesDialog>,
     @Inject(MAT_DIALOG_DATA) public data: SKChart
   ) {
@@ -330,6 +344,67 @@ export class ChartPropertiesDialog {
 
   isLocal(url: string) {
     return url && url.indexOf('signalk') !== -1 ? 'map' : 'language';
+  }
+
+  protected openLayerProperties() {
+    // Validate layers array
+    if (!Array.isArray(this.data.layers) || this.data.layers.length === 0) {
+      return;
+    }
+
+    // Initialize layerVisibility if undefined
+    if (!this.data.layerVisibility) {
+      this.data.layerVisibility = {};
+    }
+
+    // Convert string layers to LayerInfo objects with visibility from chart data
+    const layerInfos: LayerInfo[] = this.data.layers
+      .filter((layerId) => layerId != null) // Filter out null/undefined
+      .map((layerId) => {
+        const id = typeof layerId === 'string' ? layerId : String(layerId);
+        return {
+          id,
+          visible: this.data.layerVisibility?.[id] ?? true // Default to visible if not specified
+        };
+      });
+
+    if (layerInfos.length === 0) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(LayerPropertiesDialog, {
+      data: {
+        layers: layerInfos,
+        sprite: this.data.style // Use style URL as potential sprite source
+      },
+      minWidth: '400px',
+      disableClose: false // Allow closing with ESC or backdrop click
+    });
+
+    dialogRef.afterClosed().subscribe((result: LayerInfo[] | undefined) => {
+      // Only update if result is provided (user clicked X or closed normally, not cancelled)
+      if (result && Array.isArray(result)) {
+        // Preserve existing visibility for layers not in result
+        const updatedVisibility = { ...this.data.layerVisibility };
+        
+        // Update visibility for layers in result
+        result.forEach((layer) => {
+          if (layer && layer.id) {
+            updatedVisibility[layer.id] = layer.visible;
+          }
+        });
+        
+        this.data.layerVisibility = updatedVisibility;
+        
+        // Persist layer visibility changes
+        if (this.data.identifier) {
+          this.skres.updateChartLayerVisibility(
+            this.data.identifier,
+            updatedVisibility
+          );
+        }
+      }
+    });
   }
 
   protected loadCapabilities() {

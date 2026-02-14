@@ -123,6 +123,7 @@ export class SKChart {
   region: string;
   scale = 250000;
   layers: Array<string>;
+  layerVisibility: { [layerId: string]: boolean };
   bounds: Array<number>;
   format: string;
   minZoom = 0;
@@ -139,6 +140,7 @@ export class SKChart {
     this.name = chart?.name ? chart.name : undefined;
     this.description = chart?.description ? chart.description : undefined;
     this.layers = chart?.layers ? chart.layers : [];
+    this.layerVisibility = chart?.layerVisibility ?? {};
     this.bounds = chart?.bounds ? chart.bounds : undefined;
     this.format = chart?.format ? chart.format : undefined;
     this.minZoom =

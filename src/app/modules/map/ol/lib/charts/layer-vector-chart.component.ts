@@ -75,15 +75,33 @@ export class VectorChartLayerComponent implements OnDestroy {
 
       if (chart[1].url.indexOf('.pmtiles') !== -1) {
         this.layer = initPMTilesVectorLayer(chart[1], this.zIndex());
+        
+        // If initPMTilesVectorLayer returns null (no visible layers), exit early
+        if (!this.layer) {
+          return;
+        }
       } else {
+        // Determine visible layers
+        // If layers array is empty or undefined, show all layers (no filtering)
+        // If layers array exists, filter by visibility
+        let visibleLayers: string[] | null = null;
+        
+        if (Array.isArray(chart[1].layers) && chart[1].layers.length > 0) {
+          visibleLayers = chart[1].layers.filter(
+            (layerId) => chart[1].layerVisibility?.[layerId] !== false
+          );
+        }
+
+        // Only skip layer creation if layers are defined but ALL are hidden
+        if (visibleLayers !== null && visibleLayers.length === 0) {
+          return;
+        }
+
         this.layer = new VectorTileLayer({
           source: new VectorTileSource({
             url: chart[1].url,
             format: new MVT({
-              layers:
-                Array.isArray(chart[1].layers) && chart[1].layers.length !== 0
-                  ? chart[1].layers
-                  : null
+              layers: visibleLayers  // null = all layers, array = filtered layers
             }),
             maxZoom: maxZ
           }),
