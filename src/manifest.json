@@ -6,7 +6,7 @@
   "background_color": "#fafafa",
   "display": "standalone",
   "orientation": "any",
-  "scope": "/@signalk/freeboard-sk/",
+  "scope": "/@signalk/freeboard-fork/",
   "start_url": "./index.html",
   "icons": [
     {

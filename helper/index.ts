@@ -29,8 +29,8 @@ module.exports = (server: FreeboardHelperApp): Plugin => {
 
   // ******** REQUIRED PLUGIN DEFINITION *******
   const plugin: Plugin = {
-    id: 'freeboard-sk',
-    name: 'Freeboard-SK',
+    id: 'freeboard-fork',
+    name: 'Freeboard Fork',
     schema: () => CONFIG_SCHEMA,
     uiSchema: () => CONFIG_UISCHEMA,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

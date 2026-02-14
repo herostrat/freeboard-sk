@@ -97,6 +97,9 @@ export function cleanConfig(
   if (typeof settings.map.doubleClickZoom === 'undefined') {
     settings.map.doubleClickZoom = (settings as any).mapDoubleClick ?? false;
   }
+  if (typeof settings.map.overZoomTiles === 'undefined') {
+    settings.map.overZoomTiles = true;
+  }
 
   if (!settings.units.positionFormat) {
     settings.units.positionFormat =
@@ -403,6 +406,7 @@ export function defaultConfig(): IAppConfig {
       animate: false,
       labelsMinZoom: 8,
       doubleClickZoom: false, // true=zoom
+      overZoomTiles: true, // keep tiles visible beyond chart max zoom
       centerOffset: 0,
       s57Options: {
         graphicsStyle: 'Paper',

@@ -116,7 +116,7 @@ const trailMgr: VesselTrailConfig = {
 // current delta $source
 let $source!: string;
 // autopilot device id
-let apDeviceId = 'freeboard-sk';
+let apDeviceId = 'freeboard-fork';
 
 // *******************************************************************
 

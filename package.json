@@ -1,5 +1,5 @@
 {
-  "name": "@signalk/freeboard-sk",
+  "name": "@signalk/freeboard-fork",
   "version": "2.19.8",
   "description": "Openlayers chart plotter implementation for Signal K",
   "keywords": [
