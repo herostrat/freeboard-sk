@@ -317,6 +317,9 @@ export function cleanConfig(
   if (typeof settings.selections.chartOpacity === 'undefined') {
     settings.selections.chartOpacity = {};
   }
+  if (typeof settings.selections.chartLayerVisibility === 'undefined') {
+    settings.selections.chartLayerVisibility = {};
+  }
   if (typeof settings.selections.tracks === 'undefined') {
     settings.selections.tracks = [];
   }

@@ -352,6 +352,7 @@ export class AppFacade extends InfoService {
       (r: boolean) => {
         this.isLoggedIn.set(r);
         if (r) {
+          const localSelections = this.config?.selections;
           this.debug(
             'loadSettingsfromServer(): Is authenticated. Fetching config from SK Server...'
           );
@@ -362,6 +363,43 @@ export class AppFacade extends InfoService {
               }
               cleanConfig(serverSettings, this.hostDef.params);
               if (validateConfig(serverSettings)) {
+                // Preserve local session selections when server does not provide them.
+                // These are user-specific, client-side session choices (e.g. enabled charts,
+                // chart order, opacity, layer visibility). We do NOT merge the whole config
+                // because that could override server-managed defaults and shared settings.
+                if (localSelections) {
+                  serverSettings.selections = {
+                    ...serverSettings.selections
+                  };
+
+                  if (
+                    (!Array.isArray(serverSettings.selections.charts) ||
+                      serverSettings.selections.charts.length === 0) &&
+                    Array.isArray(localSelections.charts)
+                  ) {
+                    serverSettings.selections.charts = localSelections.charts;
+                  }
+
+                  if (
+                    (!Array.isArray(serverSettings.selections.chartOrder) ||
+                      serverSettings.selections.chartOrder.length === 0) &&
+                    Array.isArray(localSelections.chartOrder)
+                  ) {
+                    serverSettings.selections.chartOrder =
+                      localSelections.chartOrder;
+                  }
+
+                  serverSettings.selections.chartOpacity = {
+                    ...serverSettings.selections.chartOpacity,
+                    ...(localSelections.chartOpacity ?? {})
+                  };
+
+                  serverSettings.selections.chartLayerVisibility = {
+                    ...serverSettings.selections.chartLayerVisibility,
+                    ...(localSelections.chartLayerVisibility ?? {})
+                  };
+                }
+
                 this.config = serverSettings;
                 this.doPostConfigLoad();
                 this.alignCustomResourcesPaths();

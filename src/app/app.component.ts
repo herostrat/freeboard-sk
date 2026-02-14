@@ -745,6 +745,9 @@ export class AppComponent {
           this.getFeatures();
           this.app.data.server = this.signalk.server.info;
           this.openSKStream();
+          // Ensure resources refresh after a successful server connection so
+          // session selections (enabled charts, opacity) are applied when data is available.
+          this.fetchResources(true);
         },
         () => {
           this.app.showMessage(
