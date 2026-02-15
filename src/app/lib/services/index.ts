@@ -6,4 +6,4 @@ export * from './state.service';
 export * from './localstorage.service';
 export * from './indexeddb';
 
-export * from './wakelock.service';
+export * from './wakelock.service';export * from './styles.service';

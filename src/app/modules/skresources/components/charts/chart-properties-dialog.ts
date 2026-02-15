@@ -14,6 +14,8 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatInputModule } from '@angular/material/input';
 import { AppFacade } from 'src/app/app.facade';
+import { StylesService } from 'src/app/lib/services/styles.service';
+import { MapboxStyle } from 'src/app/types';
 import { SKChart } from 'src/app/modules/skresources/resource-classes';
 import { CoordsPipe } from 'src/app/lib/pipes';
 import {
@@ -171,14 +173,14 @@ import { SKResourceService } from '../../resources.service';
           <div style="display:flex;">
             <div class="key-label">URL:</div>
             <div style="flex: 1 1 auto;overflow-x: auto;">
-              {{ data.url }}
+              {{ displayUrl(data.url) }}
             </div>
           </div>
-          @if (data.style) {
+          @if (styleDisplay()) {
             <div style="display:flex;">
               <div class="key-label">Style:</div>
               <div style="flex: 1 1 auto;overflow-x: auto;">
-                {{ data.style }}
+                {{ styleDisplay() }}
               </div>
             </div>
           }
@@ -334,6 +336,7 @@ export class ChartPropertiesDialog {
     public app: AppFacade,
     private dialog: MatDialog,
     private skres: SKResourceService,
+    private stylesService: StylesService,
     public dialogRef: MatDialogRef<ChartPropertiesDialog>,
     @Inject(MAT_DIALOG_DATA) public data: SKChart
   ) {
@@ -346,7 +349,42 @@ export class ChartPropertiesDialog {
     return url && url.indexOf('signalk') !== -1 ? 'map' : 'language';
   }
 
-  protected openLayerProperties() {
+  displayUrl(url?: string): string {
+    if (!url) {
+      return '';
+    }
+    return url.replace(/%7B/g, '{').replace(/%7D/g, '}');
+  }
+
+  private getGlobalStyle(): MapboxStyle | undefined {
+    const styleId = this.app.vectorChartStyle();
+    if (!styleId) {
+      return undefined;
+    }
+    
+    const style = this.stylesService.getStyle(styleId);
+    if (!style) {
+      console.warn(`Style not found: ${styleId}`);
+    }
+    return style;
+  }
+
+  styleDisplay(): string | null {
+    if (this.data.style) {
+      return this.data.style;
+    }
+
+    const styleId = this.app.vectorChartStyle();
+    if (!styleId) {
+      return null;
+    }
+
+    const style = this.getGlobalStyle();
+    const label = style?.name || styleId;
+    return `Global: ${label}`;
+  }
+
+  protected async openLayerProperties() {
     // Validate layers array
     if (!Array.isArray(this.data.layers) || this.data.layers.length === 0) {
       return;
@@ -357,28 +395,61 @@ export class ChartPropertiesDialog {
       this.data.layerVisibility = {};
     }
 
-    // Convert string layers to LayerInfo objects with visibility from chart data
-    const layerInfos: LayerInfo[] = this.data.layers
-      .filter((layerId) => layerId != null) // Filter out null/undefined
-      .map((layerId) => {
-        const id = typeof layerId === 'string' ? layerId : String(layerId);
-        return {
-          id,
-          visible: this.data.layerVisibility?.[id] ?? true // Default to visible if not specified
-        };
-      });
-
-    if (layerInfos.length === 0) {
-      return;
+    // Get the global style that's currently being rendered on the map
+    const globalStyle = this.getGlobalStyle();
+    if (!globalStyle) {
+      return this.openLayerPropertiesDialog([], undefined);
     }
 
+    // Get sprite metadata
+    const styleId = this.app.vectorChartStyle() || '';
+    const spriteMetadata = this.stylesService.getSpriteMetadata(styleId);
+
+    // For each chart layer, use StylesService to extract the icon the same way the renderer does
+    const layerInfos: LayerInfo[] = [];
+    
+    for (const chartLayerId of this.data.layers) {
+      if (chartLayerId == null) continue;
+      
+      const id = String(chartLayerId);
+      const visible = this.data.layerVisibility?.[id] ?? true;
+      
+      // Extract icon and styles for this layer
+      const iconData = this.stylesService.extractLayerIcon(globalStyle, id);
+      const spriteCoords = iconData?.iconName ? spriteMetadata?.[iconData.iconName] : null;
+      const styles = this.stylesService.extractLayerStyles(globalStyle, id);
+
+      // Build layer info with all extracted data
+      const layerInfo: LayerInfo = {
+        id,
+        visible,
+        ...styles,
+        ...(spriteCoords && { 
+          spriteSheet: this.stylesService.getSpriteUrl(globalStyle?.sprite),
+          spriteMeta: {
+            x: spriteCoords.x,
+            y: spriteCoords.y,
+            width: spriteCoords.width,
+            height: spriteCoords.height,
+            pixelRatio: spriteCoords.pixelRatio
+          }
+        })
+      };
+      
+      layerInfos.push(layerInfo);
+    }
+
+    return this.openLayerPropertiesDialog(layerInfos, globalStyle);
+  }
+
+  private openLayerPropertiesDialog(layerInfos: LayerInfo[], globalStyle: MapboxStyle | undefined) {
     const dialogRef = this.dialog.open(LayerPropertiesDialog, {
       data: {
         layers: layerInfos,
-        sprite: this.data.style // Use style URL as potential sprite source
+        chartId: this.data.identifier
       },
       minWidth: '400px',
-      disableClose: false // Allow closing with ESC or backdrop click
+      disableClose: false
     });
 
     dialogRef.afterClosed().subscribe((result: LayerInfo[] | undefined) => {
@@ -588,4 +659,51 @@ export class ChartPropertiesDialog {
       });
     });
   }
+
+  private spriteMetadataCache: Map<string, any> = new Map();
+  private spriteFetchPromises: Map<string, Promise<any>> = new Map();
+
+  // DEPRECATED: These methods are not currently used. The dialog now shows the full sprite sheet.
+  private preloadSpriteMetadata(jsonUrl: string): Promise<void> {
+    if (!jsonUrl) {
+      return Promise.resolve();
+    }
+    const promise = fetch(jsonUrl)
+      .then((res) => res.json())
+      .then((data) => {
+        this.spriteMetadataCache.set(jsonUrl, data);
+        this.spriteFetchPromises.delete(jsonUrl);
+      })
+      .catch((err) => {
+        console.error(`Failed to load sprite JSON:`, err);
+        this.spriteMetadataCache.set(jsonUrl, null);
+        this.spriteFetchPromises.delete(jsonUrl);
+      });
+
+    this.spriteFetchPromises.set(jsonUrl, promise);
+    return promise.then(() => {});
+  }
+
+  // DEPRECATED: Not currently used
+  private getLayerSprite(
+    layerId: string,
+    style?: MapboxStyle
+  ): { sheet: string; meta: { x: number; y: number; width: number; height: number; pixelRatio?: number } } | null {
+    return null;
+  }
+
+  // DEPRECATED: Not currently used  
+  private findIconKeyForLayer(layerId: string, style?: MapboxStyle): string | null {
+    return null;
+  }
+
+  // DEPRECATED: Not currently used
+  private loadSpriteMetadata(
+    jsonUrl: string,
+    pngUrl: string,
+    iconKey: string
+  ): { sheet: string; meta: { x: number; y: number; width: number; height: number; pixelRatio?: number } } | null {
+    return null;
+  }
 }
+

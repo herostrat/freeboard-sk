@@ -20,6 +20,24 @@ export type ErrorList = Array<{ status: number; message: string }>;
 
 export type MFBAction = 'wpt' | 'pob' | 'autopilot' | 'radar';
 
+// ** Mapbox Style type for vector chart styling
+export interface MapboxStyle {
+  version: number;
+  name?: string;
+  metadata?: { [key: string]: unknown };
+  sources: { [id: string]: { type: string; url?: string; [key: string]: unknown } };
+  sprite?: string;
+  glyphs?: string;
+  layers: Array<{
+    id: string;
+    source?: string;
+    'source-layer'?: string;
+    type: string;
+    [key: string]: unknown;
+  }>;
+  [key: string]: unknown;
+}
+
 export interface SKApiResponse {
   state: 'FAILED' | 'COMPLETED' | 'PENDING';
   statusCode: number;
@@ -194,6 +212,7 @@ export interface IAppConfig {
     chartLayerVisibility: {
       [chartId: string]: { [layerId: string]: boolean };
     };
+    vectorChartStyle: string | null; // selected Mapbox style for vector charts (global)
     aisTargets: string[];
     aisTargetTypes: number[];
     aisFilterByShipType: boolean;

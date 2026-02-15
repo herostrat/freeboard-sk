@@ -21,6 +21,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { SignalKPreferredPathsComponent } from './signalk-preferredpaths.component';
 import { SettingsFacade } from '../settings.facade';
 import { WakeLockService } from 'src/app/lib/services';
+import { StylesService } from 'src/app/lib/services/styles.service';
 import { defaultConfig } from 'src/app/app.config';
 import { SettingsOptions } from '../settings.facade';
 import { S57Service } from '../../map/ol';
@@ -63,6 +64,8 @@ export class SettingsDialog implements OnInit {
   };
 
   protected options: SettingsOptions;
+  protected availableStyles = signal<Array<{ id: string; displayName: string }>>([]);
+  protected vectorStyleModelValue: string | null = null;
 
   public aisStateFilter = {
     moored: false,
@@ -77,7 +80,8 @@ export class SettingsDialog implements OnInit {
     protected dialogRef: MatDialogRef<SettingsDialog>,
     protected wakeLock: WakeLockService,
     private s57: S57Service,
-    protected app: AppFacade
+    protected app: AppFacade,
+    private stylesService: StylesService
   ) {
     this.options = new SettingsOptions();
   }
@@ -89,6 +93,13 @@ export class SettingsDialog implements OnInit {
         this.aisStateFilter[i] = true;
       }
     });
+
+    // Initialize vector chart style from app.vectorChartStyle
+    this.vectorStyleModelValue = this.app.vectorChartStyle() ?? null;
+    console.log('[SettingsDialog] Initialized vectorStyleModelValue:', this.vectorStyleModelValue);
+
+    // Load available vector chart styles asynchronously
+    this.loadAvailableStyles();
   }
 
   /**
@@ -252,5 +263,34 @@ export class SettingsDialog implements OnInit {
    */
   clearAuthToken() {
     this.facade.clearToken();
+  }
+
+  /**
+   * Load available vector chart styles from stylesService
+   */
+  private loadAvailableStyles() {
+    console.log('[SettingsDialog] Starting to load vector chart styles...');
+    
+    this.stylesService.loadStyles().then(() => {
+      const styleOptions = this.stylesService.getStyleOptions();
+      console.log('[SettingsDialog] Loaded style options:', styleOptions);
+      
+      if (styleOptions.length === 0) {
+        console.warn('[SettingsDialog] No styles loaded. Check Tileserver connection.');
+      }
+      
+      this.availableStyles.set(styleOptions);
+    }).catch((error) => {
+      console.error('[SettingsDialog] Failed to load vector chart styles:', error);
+    });
+  }
+
+  /**
+   * Set the selected vector chart style
+   */
+  setVectorChartStyle() {
+    const styleId = this.vectorStyleModelValue;
+    console.log('[SettingsDialog] Setting vector chart style to:', styleId);
+    this.app.setVectorChartStyle(styleId);
   }
 }

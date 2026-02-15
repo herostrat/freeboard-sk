@@ -172,6 +172,19 @@ export class SKResourceService {
     return undefined;
   }
 
+  private normalizeTileTemplateUrl(tileUrl: string, baseUrl: string): string {
+    if (!tileUrl) {
+      return tileUrl;
+    }
+
+    const resolved = tileUrl.startsWith('http')
+      ? tileUrl
+      : new URL(tileUrl, baseUrl).toString();
+
+    // Preserve template braces for {z}/{x}/{y} when displaying and fetching tiles.
+    return resolved.replace(/%7B/g, '{').replace(/%7D/g, '}');
+  }
+
   private async enrichChartFromTileJson(
     chart: ChartResource
   ): Promise<ChartResource> {
@@ -212,8 +225,17 @@ export class SKResourceService {
             ? tilejson.format
             : this.inferFormatFromTiles(tilejson) ??
               (vectorLayers?.length ? 'pbf' : chart.format);
+      const formatLower = typeof resolvedFormat === 'string'
+        ? resolvedFormat.toLowerCase()
+        : undefined;
+      const hasVectorTiles = formatLower === 'pbf' || formatLower === 'mvt';
+      const resolvedUrl =
+        hasVectorTiles && Array.isArray(tilejson?.tiles) && tilejson.tiles.length > 0
+          ? this.normalizeTileTemplateUrl(tilejson.tiles[0], fetchUrl)
+          : chart.url;
       return {
         ...chart,
+        url: resolvedUrl,
         bounds: Array.isArray(chart.bounds) ? chart.bounds : tilejson.bounds,
         minzoom:
           typeof chart.minzoom !== 'undefined'
@@ -513,7 +535,7 @@ export class SKResourceService {
       case 'notes':
         return this.transformNote(resource as NoteResource, id);
       case 'charts':
-        return this.transformChart(resource as ChartResource);
+        return this.transformChart(resource as ChartResource, id);
       case 'tracks':
         return this.transformTrack(resource as TrackResource);
     }
@@ -856,7 +878,7 @@ export class SKResourceService {
    * @param chart Chart entry from server
    * @returns SKChart object
    */
-  private transformChart(chart: ChartResource): SKChart {
+  private transformChart(chart: ChartResource, id?: string): SKChart {
     // v1->2 alignment
     if (chart.tilemapUrl) {
       chart.url = chart.tilemapUrl;
@@ -878,6 +900,9 @@ export class SKResourceService {
       chart.type?.toLowerCase() === 'tilelayer'
     ) {
       chart.format = this.inferFormatFromUrl(chart.url);
+    }
+    if (!chart.identifier && id) {
+      chart.identifier = id;
     }
     return new SKChart(chart);
   }

@@ -139,6 +139,7 @@ export class AppFacade extends InfoService {
   sIsFetching = signal<boolean>(false); // show progress for fetching data from server
   sTrueMagChoice = signal<string>(''); // preferred path True / Magnetic
   zoomToBounds = signal<[number, number, number, number] | null>(null); // request map to zoom to bounds
+  vectorChartStyle = signal<string | null>(null); // selected Mapbox style for vector charts (global)
 
   // non-persisted UIstate attributes
   uiCtrl = signal<{
@@ -341,6 +342,9 @@ export class AppFacade extends InfoService {
 
     this.sTrueMagChoice.set(this.config.units.headingAttribute);
 
+    // Initialize vector chart style from config
+    this.vectorChartStyle.set(this.config.selections.vectorChartStyle ?? null);
+
     // emit settings$.ready
     this.debug(`doPostConfigLoad(): emit config$.ready`);
     this.emitConfigEvent('ready');
@@ -399,6 +403,12 @@ export class AppFacade extends InfoService {
                     ...serverSettings.selections.chartLayerVisibility,
                     ...(localSelections.chartLayerVisibility ?? {})
                   };
+
+                  // Preserve local vector chart style selection if server doesn't provide one
+                  if (!serverSettings.selections.vectorChartStyle &&
+                      localSelections.vectorChartStyle) {
+                    serverSettings.selections.vectorChartStyle = localSelections.vectorChartStyle;
+                  }
                 }
 
                 this.config = serverSettings;
@@ -429,6 +439,13 @@ export class AppFacade extends InfoService {
   /** Request map to zoom to the supplied bounds (lon/lat extent). */
   public requestZoomToBounds(bounds: [number, number, number, number]) {
     this.zoomToBounds.set(bounds);
+  }
+
+  /** Set the global Mapbox style for vector charts */
+  public setVectorChartStyle(styleId: string | null) {
+    this.vectorChartStyle.set(styleId);
+    this.config.selections.vectorChartStyle = styleId;
+    this.saveConfig();
   }
 
   /** Initialises Material IconRegistry with custom icons */

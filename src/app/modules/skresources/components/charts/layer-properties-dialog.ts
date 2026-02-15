@@ -11,16 +11,27 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatListModule } from '@angular/material/list';
 import { MatIconButton } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { SKResourceService } from '../../resources.service';
 
 export interface LayerInfo {
   id: string;
   visible: boolean;
-  sprite?: string;
+  spriteSheet?: string;
+  spriteMeta?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    pixelRatio?: number;
+  };
+  fillColor?: string;
+  lineColor?: string;
+  lineWidth?: number;
 }
 
 export interface LayerPropertiesData {
   layers: LayerInfo[];
-  sprite?: string; // Chart-level sprite URL
+  chartId?: string;
 }
 
 @Component({
@@ -72,15 +83,23 @@ export interface LayerPropertiesData {
                   </mat-icon>
                 </button>
                 <div class="layer-sprite">
-                  @if (layer.sprite || data.sprite) {
-                    <img
-                      [src]="layer.sprite || data.sprite"
-                      [alt]="layer.id"
-                      class="sprite-icon"
-                      (error)="onSpriteError($event)"
-                    />
+                  @if (layer.spriteMeta && layer.spriteSheet) {
+                    <div
+                      class="sprite-preview"
+                      [style]="getSpriteStyle(layer)"
+                    ></div>
+                  } @else if (layer.fillColor) {
+                    <div
+                      class="fill-preview"
+                      [style]="'background-color:' + layer.fillColor"
+                    ></div>
+                  } @else if (layer.lineColor) {
+                    <div
+                      class="line-preview"
+                      [style]="'border-top: 4px solid ' + layer.lineColor"
+                    ></div>
                   } @else {
-                    <span class="sprite-not-found">N/A</span>
+                    <mat-icon class="default-layer-icon" matTooltip="Layer icon not available">layers</mat-icon>
                   }
                 </div>
                 <div class="layer-name">{{ layer.id }}</div>
@@ -100,8 +119,9 @@ export interface LayerPropertiesData {
     `
       .layer-properties {
         font-family: arial;
-        min-width: 400px;
-        max-width: 600px;
+        min-width: 500px;
+        max-width: 800px;
+        max-height: 80vh;
       }
 
       .layer-item {
@@ -113,23 +133,46 @@ export interface LayerPropertiesData {
       }
 
       .layer-sprite {
-        width: 24px;
-        height: 24px;
+        width: 40px;
+        height: 40px;
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
       }
 
       .sprite-icon {
-        max-width: 24px;
-        max-height: 24px;
+        max-width: 40px;
+        max-height: 40px;
         object-fit: contain;
+      }
+
+      .sprite-preview {
+        background-repeat: no-repeat;
+        image-rendering: auto;
+      }
+
+      .fill-preview {
+        width: 35px;
+        height: 35px;
+        border: 1px solid #ccc;
+        border-radius: 2px;
+      }
+
+      .line-preview {
+        width: 35px;
+        height: 2px;
       }
 
       .sprite-not-found {
         font-size: 9px;
         color: #999;
         font-style: italic;
+      }
+
+      .default-layer-icon {
+        color: #999;
+        font-size: 20px;
       }
 
       .layer-name {
@@ -144,32 +187,66 @@ export interface LayerPropertiesData {
   ]
 })
 export class LayerPropertiesDialog {
+  private spriteStyleCache = new Map<string, string>();
+
   constructor(
     public dialogRef: MatDialogRef<LayerPropertiesDialog>,
-    @Inject(MAT_DIALOG_DATA) public data: LayerPropertiesData
+    @Inject(MAT_DIALOG_DATA) public data: LayerPropertiesData,
+    private skres: SKResourceService
   ) {}
 
   toggleVisibility(layer: LayerInfo) {
     layer.visible = !layer.visible;
+    this.persistVisibility();
   }
 
   enableAll() {
     this.data.layers.forEach((layer) => (layer.visible = true));
+    this.persistVisibility();
   }
 
   disableAll() {
     this.data.layers.forEach((layer) => (layer.visible = false));
+    this.persistVisibility();
   }
 
   handleClose() {
     this.dialogRef.close(this.data.layers);
   }
 
-  onSpriteError(event: Event) {
-    // Hide broken sprite images
-    const img = event.target as HTMLImageElement;
-    if (img) {
-      img.style.display = 'none';
+  getSpriteStyle(layer: LayerInfo): string {
+    if (!layer.spriteMeta || !layer.spriteSheet) {
+      return '';
     }
+
+    // Check cache first
+    if (this.spriteStyleCache.has(layer.id)) {
+      return this.spriteStyleCache.get(layer.id)!;
+    }
+
+    const ratio = layer.spriteMeta.pixelRatio ?? 1;
+    const width = Math.max(1, Math.round(layer.spriteMeta.width / ratio));
+    const height = Math.max(1, Math.round(layer.spriteMeta.height / ratio));
+    const x = Math.round(layer.spriteMeta.x / ratio);
+    const y = Math.round(layer.spriteMeta.y / ratio);
+
+    const style = `width:${width}px;height:${height}px;background-image:url('${layer.spriteSheet}');background-position:-${x}px -${y}px;background-repeat:no-repeat;background-size:auto;`;
+    
+    // Cache the computed style
+    this.spriteStyleCache.set(layer.id, style);
+
+    return style;
+  }
+
+  private persistVisibility() {
+    if (!this.data.chartId) {
+      return;
+    }
+
+    const visibilityMap: { [layerId: string]: boolean } = {};
+    this.data.layers.forEach((layer) => {
+      visibilityMap[layer.id] = layer.visible;
+    });
+    this.skres.updateChartLayerVisibility(this.data.chartId, visibilityMap);
   }
 }

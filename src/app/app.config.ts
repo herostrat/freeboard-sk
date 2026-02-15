@@ -320,6 +320,9 @@ export function cleanConfig(
   if (typeof settings.selections.chartLayerVisibility === 'undefined') {
     settings.selections.chartLayerVisibility = {};
   }
+  if (typeof settings.selections.vectorChartStyle === 'undefined') {
+    settings.selections.vectorChartStyle = null; // global Mapbox style for vector charts
+  }
   if (typeof settings.selections.tracks === 'undefined') {
     settings.selections.tracks = [];
   }
@@ -500,6 +503,7 @@ export function defaultConfig(): IAppConfig {
       chartOrder: ['openstreetmap', 'openseamap'], // chart layer ordering
       chartOpacity: {},
       chartLayerVisibility: {},
+      vectorChartStyle: null, // global Mapbox style for vector charts
       aisTargets: null,
       aisTargetTypes: [],
       aisFilterByShipType: false,

@@ -525,6 +525,29 @@
                 </div>
               </mat-card-content>
             </mat-card>
+
+            <div class="setting-group-title">MAPBOX STYLES (Vector Tiles)</div>
+            <mat-card>
+              <mat-card-content>
+                <div class="setting-card-row" style="padding-bottom: 10px">
+                  <div class="setting-card-row-item">
+                    <mat-form-field style="width: 100%">
+                      <mat-label>Vector Chart Style</mat-label>
+                      <mat-select
+                        [(ngModel)]="vectorStyleModelValue"
+                        (selectionChange)="setVectorChartStyle()"
+                        matTooltip="Global Mapbox style for vector tile charts"
+                      >
+                        <mat-option [value]="null">None (default)</mat-option>
+                        @for(style of availableStyles(); track style.id) {
+                        <mat-option [value]="style.id">{{style.displayName}}</mat-option>
+                        }
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
+                </div>
+              </mat-card-content>
+            </mat-card>
           </div>
         </div>
       </div>

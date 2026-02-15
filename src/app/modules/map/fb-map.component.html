@@ -133,6 +133,18 @@
     } @else if (c[1].type?.toLowerCase() === 'mapstylejson') {
       <fb-mapstylejson-chart [zIndex]="10 + idx" [chart]="c">
       </fb-mapstylejson-chart>
+    } @else if (
+      c[1].type?.toLowerCase() === 'tilejson' &&
+      (c[1].format?.toLowerCase() === 'pbf' ||
+        c[1].format?.toLowerCase() === 'mvt')
+    ) {
+      <fb-tilelayer-vector
+        [zIndex]="10 + idx"
+        [chart]="c"
+        [overZoomTiles]="overZoomTiles"
+        [mapMaxZoom]="app.MAP_ZOOM_EXTENT.max"
+      >
+      </fb-tilelayer-vector>
     } @else if (c[1].type?.toLowerCase() === 'tilejson') {
       <fb-tilejson-chart
         [zIndex]="10 + idx"
